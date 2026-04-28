@@ -6,11 +6,12 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use pgrx::pgrx_sql_entity_graph::metadata::{
-    ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
+    ArgumentError, ReturnsError, ReturnsRef, SqlMappingRef, SqlTranslatable,
+    TypeOrigin,
 };
+
 use pgrx::StringInfo;
 use pgrx::{pg_shmem_init, prelude::*, PGRXSharedMemory, PgLwLock};
-
 mod base32;
 use base32::Base32Encoder;
 
@@ -29,6 +30,10 @@ const PREFIX_CHARS: &[u8] = b"\0abcdefghijklmnopqrstuvwxyz";
 const POSTGRES_EPOCH_OFFSET: Duration = Duration::from_secs(946684800);
 const PREFIX_LEN: usize = 3;
 const SEPARATOR: char = '_';
+// const TYPE_IDENT: &'static str = "plid";
+// const TYPE_ORIGIN: TypeOrigin = /* value */;
+// const ARGUMENT_SQL: std::result::Result<SqlMappingRef, ArgumentError> = Ok(/* value */);
+// const RETURN_SQL: std::result::Result<ReturnsRef, ReturnsError> = Ok(/* value */);
 
 /// A ULID inspired id with a compact 128 bit representation.
 ///
@@ -547,14 +552,14 @@ extension_sql!(
 //
 // SAFETY: We have implement ed the required methods to correctly map the `Plid` type
 // to the corresponding SQL type `plid`.
-unsafe impl SqlTranslatable for Plid {
-    fn argument_sql() -> Result<SqlMapping, ArgumentError> {
-        Ok(SqlMapping::literal("plid"))
-    }
 
-    fn return_sql() -> Result<Returns, ReturnsError> {
-        Ok(Returns::One(SqlMapping::literal("plid")))
-    }
+unsafe impl SqlTranslatable for Plid {
+    const TYPE_IDENT: &'static str = pgrx::pgrx_resolved_type!(MyType);
+    const TYPE_ORIGIN: TypeOrigin = TypeOrigin::ThisExtension;
+    const ARGUMENT_SQL: Result<SqlMappingRef, ArgumentError> =
+        Ok(SqlMappingRef::literal("my_type"));
+    const RETURN_SQL: Result<ReturnsRef, ReturnsError> =
+        Ok(ReturnsRef::One(SqlMappingRef::literal("my_type")));
 }
 
 impl FromStr for Plid {
